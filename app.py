@@ -1,56 +1,43 @@
-import flask
+from flask import Flask, render_template, request
 import pickle
 import pandas as pd
 
-# Use pickle to load in the pre-trained model
-with open(f'model/prediction_model_xgboost.pkl', 'rb') as f:
-    model = pickle.load(f)
-
 # Initialise the Flask app
-app = flask.Flask(__name__, template_folder='templates')
+app = Flask(__name__)
+
+# Use pickle to load in the pre-trained model
+filename = "models/model.sav"
+model = pickle.load(open(filename, "rb"))
 
 # Set up the main route
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=["GET", "POST"])
 def main():
-    if flask.request.method == 'GET':
-        # Just render the initial form, to get input
-        return(flask.render_template('main.html'))
-    
-    if flask.request.method == 'POST':
-        # Extract the input
-        PM3 = flask.request.form['PM2.5']
-        PM10 = flask.request.form['PM10']
-        NOx = flask.request.form['NOx']
 
-        # Make DataFrame for model
-        input_variables = pd.DataFrame([[PM3, PM10, NOx]],
+    if request.method == "POST":
+        # Extract the input from the form
+        PM2 = request.form.get("PM2.5")
+        PM10 = request.form.get("PM10")
+        NOx = request.form.get("NOx")
+
+        # Create DataFrame based on input
+        input_variables = pd.DataFrame([[PM2, PM10, NOx]],
                                        columns=['PM2.5', 'PM10', 'NOx'],
                                        dtype=float,
                                        index=['input'])
 
         # Get the model's prediction
+        # Given that the prediction is stored in an array we simply extract by indexing
         prediction = model.predict(input_variables)[0]
     
-        # Render the form again, but add in the prediction and remind user
-        # of the values they input before
-        return flask.render_template('page1.html',
-                                     original_input={'PM2.5':PM3,
+        # We now pass on the input from the from and the prediction to the index page
+        return render_template("main.html",
+                                     original_input={'PM2.5':PM2,
                                                      'PM10':PM10,
                                                      'NOx':NOx},
-                                     result=prediction,
+                                     result=prediction
                                      )
-@app.route('/page1')
-def page1():
-    return flask.render_template('page1.html') 
-   
-@app.route('/page2')
-def page2():
-    return flask.render_template('page2.html') 
-
-@app.route('/main')
-def main():
-    return flask.render_template('main.html') 
-
+    # If the request method is GET
+    return render_template("main.html")
 
 if __name__ == '__main__':
     app.run(debug=True)
